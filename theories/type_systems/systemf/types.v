@@ -833,7 +833,18 @@ Proof.
     injection Heq as ->. by eapply typed_subst_type_closed.
   - (* unpack *)
     (* TODO: this will be an exercise for you soon :) *)
-    admit.
+    eapply type_unpack_inversion in Hty as (B & s & Heq & Hwf & Hty1 & Hty2). 
+    eapply type_pack_inversion in Hty1 as (C & D & Htyeq & Hty3 & Hty4 & Hty5).
+    assert (subst' x e1 e2 = lang.subst s e1 e2). {
+      rewrite Heq. auto. 
+    }
+    rewrite H0.
+    eapply typed_substitutivity with (A:=C.[D/]).
+    apply Hty3.
+    inversion Htyeq. rewrite H2 in Hty2.
+    eapply (type_wf_closed A (ren (+1))) in Hwf as Hty6.
+    eapply typed_subst_type_closed'; auto.
+    rewrite Hty6 in Hty2. auto.
   - (* unop *)
     eapply unop_inversion in Hty as (A1 & Hop & Hty).
     assert ((A1 = Int ∧ A = Int) ∨ (A1 = Bool ∧ A = Bool)) as [(-> & ->) | (-> & ->)].
@@ -861,8 +872,7 @@ Proof.
     eauto.
   - eapply case_inversion in Hty as (B & C & (? & ? & [= <- <-] & Hty & ?)%injr_inversion & ? & ?).
     eauto.
-(*Qed.*)
-Admitted.
+Qed.
 
 Lemma typed_preservation e e' A:
   TY 0; ∅ ⊢ e : A →
