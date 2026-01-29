@@ -15,7 +15,7 @@ Qed.
 Lemma val_no_step' (v : val) (e : expr) :
   step v e -> False.
 Proof.
-  intros H. eapply val_no_step; first eassumption.
+  intros H. eapply val_no_step; first eassumption. 
   apply is_val_val.
 Qed.
 
@@ -41,18 +41,76 @@ Ltac val_no_step :=
     solve [exfalso; eapply (val_no_step _ _ H); done]
   end.
 
+Lemma is_val_Lam x e: is_val (Lam x e).
+Proof. unfold is_val. done.
+Qed.
+
+Lemma is_val_int n: is_val (LitInt n).
+Proof. unfold is_val. done.
+Qed.
+
 Lemma step_det e e' e'':
   step e e' → step e e'' → e' = e''.
 Proof.
   (* TODO: exercise *)
-Admitted.
-
+  intros H1 H2. generalize dependent e''. induction H1.
+  - intros. inversion H2. reflexivity. val_no_step. val_no_step.
+  - intros e'' H2. inversion H2. 
+    + assert (is_val e1). { rewrite <- H0. apply is_val_Lam. } val_no_step.
+    + assert (e1'0 = e1'). {
+      specialize (IHstep) with (e'':=e1'0) as H7.
+      apply H7 in H6. rewrite H6. reflexivity.
+      }
+      rewrite H7. reflexivity.
+    + val_no_step.
+  - intros e'' H2. inversion H2.
+    + val_no_step. 
+    + val_no_step.
+    + assert (e2'0 = e2').  {
+      specialize (IHstep) with (e'':=e2'0) as H7.
+      apply H7 in H4. rewrite H4. reflexivity.
+      }
+      rewrite H5. reflexivity.
+  - intros e'' H2. inversion H2. 
+    + rewrite <- H. rewrite <- H4. reflexivity.
+    + val_no_step.
+    + val_no_step.
+  - intros e'' H2. inversion H2.
+    + assert (is_val e1). { rewrite <- H0. apply is_val_int. } val_no_step.
+    + assert (e1'0 = e1'). {
+      specialize (IHstep) with (e'':=e1'0) as H7.
+      apply H7 in H6. rewrite H6. reflexivity.
+      }
+      rewrite H7. reflexivity.
+    + val_no_step.
+  - intros e'' H2. inversion H2. 
+    + assert (is_val e2). { rewrite <- H3. apply is_val_int. } val_no_step.
+    + val_no_step.
+    + assert (e2'0 = e2'). {
+      specialize (IHstep) with (e'':=e2'0) as H7.
+      apply H7 in H4. rewrite H4. reflexivity.
+      }
+      rewrite H5. reflexivity.
+Qed.
 
 (** Exercise 3 (LN Exercise 2): Call-by-name Semantics *)
 Inductive cbn_step : expr → expr → Prop :=
   | CBNStepBeta x e e'  :
       cbn_step (App (Lam x e) e') (subst' x e' e)
       (* TODO: add more constructors *)
+  | CBNStepAppR e1 e1' e2:
+    cbn_step e1 e1' ->
+    cbn_step (App e1 e2) (App e1' e2)
+  | CBNStepPlusRed (n1 n2 n3: Z) :
+    (n1 + n2)%Z = n3 →
+    cbn_step (Plus (LitInt n1) (LitInt n2)) (LitInt n3)
+  | CBNStepPlusL e1 e1' e2 :
+    cbn_step e1 e1' →
+    cbn_step (Plus e1 e2) (Plus e1' e2)
+  | CBNStepPlusR e1 e2 e2' :
+    is_val e1 ->
+    cbn_step e2 e2' →
+    cbn_step (Plus e1 e2) (Plus e1 e2')
 .
 
 (* We make the eauto tactic aware of the constructors of cbn_step *)
@@ -62,14 +120,40 @@ Lemma different_results :
   ∃ (e: expr) (e1 e2: expr), rtc cbn_step e e1 ∧ rtc step e e2 ∧ is_val e1 ∧ is_val e2 ∧ e1 ≠ e2.
 Proof.
   (* TODO: exercise *)
-Admitted.
-
+  exists (App (λ: "x", (λ: "y", "x"+"y")) (2+3)).
+  exists (λ: "y", ((2+3)+"y")) % E. exists (λ: "y", (5+"y"))%E. 
+  split.
+  assert (cbn_step (App (λ: "x", (λ: "y", "x"+"y")) (2+3))
+          (λ: "y", ((2+3)+"y")) % E) as H1.
+        { apply CBNStepBeta. }
+  apply (rtc_l cbn_step (App (λ: "x", (λ: "y", "x"+"y")) (2+3))
+  (λ: "y", ((2+3)+"y")) % E (λ: "y", ((2+3)+"y"))% E).
+  apply H1. apply (rtc_refl cbn_step _).
+  split.
+  assert (step (App (λ: "x", (λ: "y", "x"+"y")) (2+3)) 
+          (App (λ: "x", (λ: "y", "x"+"y")) 5%E)) as H1.
+  { apply (StepAppR (λ: "x", (λ: "y", "x"+"y"))
+            (2+3) 5).
+    apply (StepPlusRed). lia. }
+  apply (rtc_l step (App (λ: "x", (λ: "y", "x"+"y")) (2+3)) 
+          (App (λ: "x", (λ: "y", "x"+"y")) 5%E)
+          (λ: "y", 5 + "y")%E
+        ).
+  apply H1.
+  apply (rtc_l step ((λ: "x" "y", "x" + "y")%E 5) (λ: "y", 5 + "y")%E
+  (λ: "y", 5 + "y")%E).
+  apply StepBeta. apply is_val_int. 
+  apply rtc_refl.
+  split. apply is_val_Lam. split. apply is_val_Lam.
+  injection. intros. discriminate H0.
+Qed.
 
 Lemma val_no_cbn_step e e':
   cbn_step e e' → is_val e →  False.
 Proof.
   (* TODO: exercise *)
-Admitted.
+  by destruct 1.
+Qed.
 
 
 (* Same tactic as [val_no_step] but for cbn_step.*)
@@ -83,9 +167,37 @@ Lemma cbn_step_det e e' e'':
   cbn_step e e' → cbn_step e e'' → e' = e''.
 Proof.
   (* TODO: exercise *)
-Admitted.
-
-
+  intros H1 H2. generalize dependent e''. induction H1.
+  - intros. inversion H2. reflexivity. val_no_cbn_step.
+  - intros e'' H2. inversion H2. 
+    + assert (is_val e1). { rewrite <- H0. apply is_val_Lam. } val_no_cbn_step.
+    + assert (e1'0 = e1'). {
+      specialize (IHcbn_step) with (e'':=e1'0) as H7.
+      apply H7 in H4. rewrite H4. reflexivity.
+      }
+      rewrite H5. reflexivity.
+  - intros e'' H2. inversion H2.
+    + rewrite <- H. rewrite <- H4. reflexivity.
+    + val_no_cbn_step. 
+    + val_no_cbn_step.
+  - intros e'' H2. inversion H2. 
+    + assert (is_val e1) as H5. { rewrite <- H. apply is_val_int. }
+      val_no_cbn_step.
+    + assert (e1'0 = e1'). {
+      specialize (IHcbn_step) with (e'':=e1'0) as H7.
+      apply H7 in H4. rewrite H4. reflexivity.
+      }
+      rewrite H5. reflexivity.
+    + val_no_cbn_step.
+  - intros e'' H2. inversion H2.
+    + assert (is_val e2). { rewrite <- H4. apply is_val_int. } val_no_cbn_step.
+    + val_no_cbn_step.
+    + assert (e2'0 = e2'). {
+      specialize (IHcbn_step) with (e'':=e2'0) as H7.
+      apply H7 in H6. rewrite H6. reflexivity.
+      }
+      rewrite H7. reflexivity.
+Qed.
 
 (** Exercise 4 (LN Exercise 3): Reflexive Transitive Closure *)
 Section rtc.

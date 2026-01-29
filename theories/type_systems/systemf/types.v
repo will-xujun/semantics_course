@@ -482,6 +482,8 @@ Lemma case_inversion n Γ e e1 e2 A :
   ∃ B C, TY n; Γ ⊢ e : B + C ∧ TY n; Γ ⊢ e1 : (B → A) ∧ TY n; Γ ⊢ e2 : (C → A).
 Proof. inversion 1; subst; eauto. Qed.
 
+Lemma is_val_pack e: is_val e → is_val (pack e).
+Proof. auto. Qed.
 
 Lemma typed_substitutivity n e e' Γ (x: string) A B :
   TY 0; ∅ ⊢ e' : A →
@@ -614,10 +616,38 @@ Proof.
     + destruct H1 as [e' H1]. eexists. eauto.
   - (* pack *)
     (* TODO this will be an exercise for you soon :) *)
-    admit.
+    assert (is_val e ∨ reducible e). {
+      apply (IH HeqΓ Heqn).
+    }
+    destruct H as [H1 | H2].
+    left. apply is_val_pack. auto.
+    right. unfold reducible. destruct H2 as [e' H2].
+    exists (Pack e').
+    assert (Pack e = fill (PackCtx HoleCtx) e). { reflexivity. }
+    assert (Pack e' = fill (PackCtx HoleCtx) e'). { reflexivity. }
+    rewrite H H0. apply fill_contextual_step. apply H2.
   - (* unpack *)
     (* TODO this will be an exercise for you soon :) *)
-    admit.
+    assert (is_val e ∨ reducible e) as [H1 | H2]. {
+      apply (IH1 HeqΓ Heqn).
+    }
+    + right.
+    apply canonical_values_exists in Hty1 as [e'' Hty1].
+    rewrite Hty1. unfold reducible. exists (subst' x e'' e').
+    apply base_contextual_step.
+    apply (UnpackS e'' e' (subst' x e'' e') x).
+    assert (is_val e''). { rewrite Hty1 in H1. auto. }
+    apply H.
+    auto. auto.
+    + right. 
+    unfold reducible in H2. destruct H2 as [e'' H2].
+    unfold reducible. exists (unpack e'' as x in e')%E.
+    assert ((unpack e as x in e')%E = (fill (UnpackCtx x HoleCtx e') e)).
+    { auto. }
+    assert ((unpack e'' as x in e')%E = (fill (UnpackCtx x HoleCtx e') e'')).
+    { auto. }    
+    rewrite H0 H.
+    apply fill_contextual_step. apply H2.
   - (* int *)left. done.
   - (* bool*) left. done.
   - (* unit *) left. done.
@@ -686,9 +716,7 @@ Proof.
       * eexists. eapply base_contextual_step. econstructor. done.
     + destruct H1 as [e' H1]. eexists. eauto.
 (*Qed.*)
-Admitted.
-
-
+Qed.
 
 
 Definition ectx_typing (K: ectx) (A B: type) :=

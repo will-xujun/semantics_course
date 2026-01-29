@@ -96,7 +96,6 @@ Qed.
 #[global]
 Hint Immediate is_val_val : core.
 
-
 (** ** Operational Semantics *)
 
 (** *** Substitution *)
