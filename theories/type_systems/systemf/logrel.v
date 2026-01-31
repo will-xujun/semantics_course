@@ -100,7 +100,7 @@ Equations type_interp (c : val_or_expr) (t : type) δ : Prop by wf (mut_measure 
   (** ∀ case *)
   type_interp (inj_val v) (∀: A) δ =>
     ∃ e, v = TLamV e ∧ is_closed [] e ∧
-      ∀ τ, type_interp (inj_expr e) A (τ .: δ);
+      ∀ τ : sem_type, type_interp (inj_expr e) A (τ .: δ);
   (** ∃ case *)
   type_interp (inj_val v) (∃: A) δ =>
     ∃ v', v = PackV v' ∧
@@ -560,9 +560,19 @@ Lemma compat_tapp Δ Γ e A B :
   TY Δ; Γ ⊨ e : (∀: A) →
   TY Δ; Γ ⊨ (e <>) : (A.[B/]).
 Proof.
-  (* TODO: exercise *)
-Admitted.
-
+  intros Hwf [Hecl He]. split.
+  { simpl. apply Hecl. }
+  intros θ δ Hctx. simpl.
+  simp type_interp.
+  specialize He with (θ:=θ) (δ:=δ) as He. apply He in Hctx as He1.
+  simp type_interp in He1. destruct He1 as [v1 [Hstep Hvrel]].
+  simp type_interp in Hvrel. destruct Hvrel as [e1 [Heq [Hcl Htau]]].
+  specialize Htau with (τ:=interp_type B δ).
+  simp type_interp in Htau. destruct Htau as [v2 [He2step Hv2vrel]].
+  exists v2. split.
+  apply (bs_tapp (subst_map θ e) e1 v2). rewrite Heq in Hstep. apply Hstep. apply He2step.
+  eapply sem_val_rel_move_single_subst. apply Hv2vrel.
+Qed.
 
 Lemma compat_pack Δ Γ e n A B :
   type_wf n B →
@@ -570,10 +580,25 @@ Lemma compat_pack Δ Γ e n A B :
   TY n; Γ ⊨ e : A.[B/] →
   TY n; Γ ⊨ (pack e) : (∃: A).
 Proof.
-  (* This will be an exercise for you next week :) *)
-  (* TODO: exercise *)
-Admitted.
+  intros HwfB HwfA [Hecl He]. split.
+  { simpl. apply Hecl. }
+  intros θ δ Hctx. simpl.
+  simp type_interp.
+  specialize He with (θ:=θ) (δ:=δ) as He. apply He in Hctx as He1.
+  simp type_interp in He1. destruct He1 as [v1 [Hstep Hvrel]].
+  exists (pack v1)%V. split.
+  apply (bs_pack). apply Hstep.
+  simp type_interp. exists v1. split. reflexivity.
+  exists (interp_type B δ).
+  eapply sem_val_rel_move_single_subst. apply Hvrel.
+Qed.
 
+Check elements.
+Check dom.
+Search dom.
+
+Lemma list_include {A:Type} (s:A) (ss:list A) : ss ⊆ (s::ss).
+Proof. auto.
 
 Lemma compat_unpack n Γ A B e e' x :
   type_wf n B →
@@ -581,10 +606,11 @@ Lemma compat_unpack n Γ A B e e' x :
   TY S n; <[x:=A]> (⤉Γ) ⊨ e' : B.[ren (+1)] →
   TY n; Γ ⊨ (unpack e as BNamed x in e') : B.
 Proof.
-  (* This will be an exercise for you next week :) *)
-  (* TODO: exercise *)
-Admitted.
-
+  intros HwfB [Hecl He] [He'cl He']. split.
+  simpl. simpl in He'cl. 
+  rewrite dom_insert in He'cl.
+  apply andb_True. split. apply Hecl.
+  
 
 Lemma compat_if n Γ e0 e1 e2 A :
   TY n; Γ ⊨ e0 : Bool →

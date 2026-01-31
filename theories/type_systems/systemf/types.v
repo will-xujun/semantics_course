@@ -498,7 +498,7 @@ Proof.
       eapply typed_weakening; [done| |lia]. apply map_empty_subseteq.
     + rewrite lookup_insert_ne in Hp; last done. auto.
   - destruct y as [ | y].
-    { intros (A' & C & -> & Hwf & Hty) % lam_anon_inversion.
+    { intros (A' & C & H1 & Hwf & Hty) % lam_anon_inversion. rewrite H1.
       econstructor; last done. destruct decide as [Heq|].
       + congruence.
       + eauto.
