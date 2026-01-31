@@ -58,6 +58,9 @@ Notation "(+)" := Sum (only parsing) : FType_scope.
   in this case [(+1)] to shift the variables up by 1. *)
 Notation "⤉ Γ" := (Autosubst_Classes.subst (ren (+1)) <$> Γ) (at level 10, format "⤉ Γ").
 
+Lemma subst_dom_same Γ : dom (⤉ Γ) = dom Γ.
+Proof. apply dom_fmap. Qed.
+
 Reserved Notation "'TY' n ; Γ ⊢ e : A" (at level 74, e, A at next level).
 
 (** [type_wf n A] states that a type [A] has only free variables up to < [n].

@@ -593,12 +593,7 @@ Proof.
   eapply sem_val_rel_move_single_subst. apply Hvrel.
 Qed.
 
-Check elements.
-Check dom.
-Search dom.
 
-Lemma list_include {A:Type} (s:A) (ss:list A) : ss ⊆ (s::ss).
-Proof. auto.
 
 Lemma compat_unpack n Γ A B e e' x :
   type_wf n B →
@@ -610,8 +605,24 @@ Proof.
   simpl. simpl in He'cl. 
   rewrite dom_insert in He'cl.
   apply andb_True. split. apply Hecl.
+  rewrite subst_dom_same in He'cl.
+  apply (is_closed_weaken (elements ({[x]} ∪ dom Γ)) (x :: elements (dom Γ)) e').
+  apply He'cl. apply elements_union_subset_cons.
+  intros. specialize He with (θ:=θ) (δ:=δ). apply He in H as H1. simp type_interp in H1. destruct H1 as [v [Hstep Hvrel]].
+  simp type_interp.
+  simp type_interp in Hvrel. destruct Hvrel as [v1' [Heqv1' [τ Hv1'vrel]]].
+  assert (𝒢 (τ .: δ) (<[x:=A]> (⤉Γ)) (<[x:=of_val v1']> θ)).
+  { apply sem_context_rel_insert. apply Hv1'vrel. apply sem_context_rel_cons. apply H. }
+  apply He' in H0 as He''. simp type_interp in He''. destruct He'' as [v2' [He'step Hv2'vrel]].
+  assert (lang.subst x v1' (subst_map (delete x θ) e') = subst_map (<[x:=of_val v1']> θ) e').
+  { apply subst_subst_map. apply sem_context_rel_closed with (δ:=δ) (Γ:=Γ). apply H. }
+  rewrite <- H1 in He'step.
+  exists v2'. split. simpl. 
+  apply (bs_unpack (subst_map θ e) (subst_map (delete x θ) e') v1' v2' x).
+  rewrite <- Heqv1'. apply Hstep. apply He'step.
+  rewrite <- sem_val_rel_cons in Hv2'vrel. apply Hv2'vrel.
+Qed.
   
-
 Lemma compat_if n Γ e0 e1 e2 A :
   TY n; Γ ⊨ e0 : Bool →
   TY n; Γ ⊨ e1 : A →

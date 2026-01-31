@@ -43,6 +43,15 @@ Section sets.
   Proof. apply elements_empty. Qed.
   Lemma elements_empty_iff X : elements X = [] ↔ X = ∅.
   Proof. rewrite elements_empty_iff. by rewrite leibniz_equiv_iff. Qed.
+  Lemma elements_union_subset_cons X x : elements ({[x]} ∪ X) ⊆ x :: elements X.
+  Proof. apply elem_of_subseteq. 
+    intros. rewrite elem_of_elements in H0.
+    rewrite elem_of_union in H0.
+    destruct H0 as [H1 | H2].
+    apply elem_of_singleton in H1. rewrite H1. 
+    apply list_elem_of_here.
+    apply list_elem_of_further. apply elem_of_elements. apply H2.
+  Qed.
 
   Lemma set_equiv X Y : X = Y ↔ ∀ x, x ∈ X ↔ x ∈ Y.
   Proof. set_solver. Qed.
